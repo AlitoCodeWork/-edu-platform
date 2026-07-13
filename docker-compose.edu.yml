@@ -1,0 +1,18 @@
+services:
+  edu:
+    build:
+      context: .
+    image: edu-platform
+    restart: unless-stopped
+    env_file:
+      - .env
+    expose:
+      - "3000"
+    networks:
+      - web
+
+# Joins the existing marketplace-cuba network so Caddy can reach edu:3000.
+networks:
+  web:
+    external: true
+    name: marketplace-cuba_default

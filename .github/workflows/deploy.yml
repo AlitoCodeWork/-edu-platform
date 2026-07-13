@@ -20,15 +20,21 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key "$USER_NAME@$HOST" 'bash -s' <<'REMOTE'
             set -e
-            echo "==> pulling latest"
+            REPO=https://github.com/AlitoCodeWork/-edu-platform.git
+            if [ ! -d /root/edu-platform/.git ]; then
+              git clone "$REPO" /root/edu-platform
+            fi
             cd /root/edu-platform
             git fetch origin main
             git reset --hard origin/main
-            echo "==> rebuilding edu (ollama paused for RAM)"
-            cd /root/marketplace-cuba
-            docker compose --env-file .env.production stop ollama || true
-            docker compose --env-file .env.production up -d --build edu
-            docker compose --env-file .env.production start ollama || true
-            docker compose --env-file .env.production ps edu
+            if [ ! -f .env ]; then
+              echo "ERROR: /root/edu-platform/.env no existe. Crealo una vez (DATABASE_URL, SERPAPI_KEY, SESSION_SECRET)." >&2
+              exit 1
+            fi
+            echo "==> building edu (ollama paused for RAM)"
+            docker stop marketplace-cuba-ollama-1 || true
+            docker compose -f docker-compose.edu.yml up -d --build
+            docker start marketplace-cuba-ollama-1 || true
+            docker compose -f docker-compose.edu.yml ps
             echo "==> deploy done"
           REMOTE
