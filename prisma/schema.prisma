@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime  @default(now())
+  attempts     Attempt[]
+}
+
+model Category {
+  id          String         @id @default(cuid())
+  slug        String         @unique
+  name        String
+  description String?
+  sortOrder   Int            @default(0)
+  topics      Topic[]
+  featured    FeaturedItem[]
+}
+
+model FeaturedItem {
+  id          String   @id @default(cuid())
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  contentJson Json
+  sortOrder   Int      @default(0)
+}
+
+model Topic {
+  id         String   @id @default(cuid())
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  name       String
+  exams      Exam[]
+}
+
+model Exam {
+  id            String     @id @default(cuid())
+  topicId       String
+  topic         Topic      @relation(fields: [topicId], references: [id])
+  title         String
+  isCompetition Boolean    @default(false)
+  week          String?
+  questions     Question[]
+  attempts      Attempt[]
+}
+
+model Question {
+  id           String @id @default(cuid())
+  examId       String
+  exam         Exam   @relation(fields: [examId], references: [id])
+  prompt       String
+  optionsJson  Json
+  correctIndex Int
+}
+
+model Attempt {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  examId    String
+  exam      Exam     @relation(fields: [examId], references: [id])
+  score     Int
+  maxScore  Int
+  week      String
+  createdAt DateTime @default(now())
+
+  @@index([week])
+}
+
+model Competition {
+  id     String @id @default(cuid())
+  examId String @unique
+  week   String @unique
+  title  String
+}
+
+model Achievement {
+  id       String   @id @default(cuid())
+  userId   String
+  code     String
+  earnedAt DateTime @default(now())
+}
