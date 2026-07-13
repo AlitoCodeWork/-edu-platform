@@ -1,0 +1,34 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          HOST: ${{ secrets.DROPLET_HOST }}
+          USER_NAME: ${{ secrets.DROPLET_USER }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key "$USER_NAME@$HOST" 'bash -s' <<'REMOTE'
+            set -e
+            echo "==> pulling latest"
+            cd /root/edu-platform
+            git fetch origin main
+            git reset --hard origin/main
+            echo "==> rebuilding edu (ollama paused for RAM)"
+            cd /root/marketplace-cuba
+            docker compose --env-file .env.production stop ollama || true
+            docker compose --env-file .env.production up -d --build edu
+            docker compose --env-file .env.production start ollama || true
+            docker compose --env-file .env.production ps edu
+            echo "==> deploy done"
+          REMOTE
